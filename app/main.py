@@ -12,7 +12,7 @@ def run(
         "--target-path",
         "-t",
         help="분석 대상 폴더 경로",
-    )
+    ),
 ):
     """
     LangGraph 기반 NHI Secret Agent를 실행한다.

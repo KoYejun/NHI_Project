@@ -9,15 +9,24 @@ LangGraph 기반 NHI Secret 위험 분석 및 리포팅 Agent MVP.
 
 ## 현재 단계
 
-1단계: LangGraph Workflow 실행 뼈대 구현
+4단계: 테스트 및 보안성 검증 추가
 
-현재는 실제 Secret Scanner 연동 전이며,
-Discovery → Context → Risk → Explanation → Report Node가 순서대로 실행되는 구조를 먼저 구현한다.
+현재는 `data/sample_project` 하위 파일을 로컬에서 스캔하고,
+LangGraph Workflow를 통해 Context Analysis, Risk Scoring,
+Explanation, Report Node를 순차 실행한다.
+
+추가로 pytest 기반 테스트를 작성해 다음 항목을 검증한다.
+
+- Scanner가 샘플 Secret 후보를 탐지하는지 확인
+- Secret 원문이 `result.json`, `report.md`에 저장되지 않는지 확인
+- 마스킹된 Secret만 리포트에 포함되는지 확인
+- LangGraph 전체 Workflow가 정상 실행되는지 확인
+- Critical/High 항목이 Human Review 대상으로 분류되는지 확인
 
 ## 실행 방법
 
 ```bash
-python -m app.main --target-path data/sample_project
+python -m app.main --target-path data/sa sample_project
 ```
 
 ## 주요 구조
