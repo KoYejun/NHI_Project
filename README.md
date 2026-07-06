@@ -16,9 +16,7 @@ NHI, 즉 Non-Human Identity는 CI/CD, 서비스 계정, 자동화 봇, 클라우
 
 ## 2. 현재 구현 단계
 
-## 2. 현재 구현 단계
-
-6단계: Policy Evidence + Streamlit Dashboard 추가
+7단계: Human Review 상태관리 및 Audit Log 추가
 
 현재 구현된 기능은 다음과 같습니다.
 
@@ -32,8 +30,29 @@ NHI, 즉 Non-Human Identity는 CI/CD, 서비스 계정, 자동화 봇, 클라우
 - JSON 결과 생성
 - Markdown 리포트 생성
 - Streamlit 관리자 대시보드 제공
+- Critical / High 항목 Human Review Queue 분류
+- Review 결정 상태 저장
+- Audit Log JSONL 기록
 - pytest 기반 보안성 검증
 - 공개 저장소용 샘플 프로젝트 생성 스크립트 제공
+
+## Human Review 기능
+
+대시보드의 `Review Workflow` 탭에서 Critical / High 항목에 대한 검토 상태를 저장할 수 있습니다.
+
+지원하는 Review 상태는 다음과 같습니다.
+
+- WAITING_HUMAN_REVIEW
+- APPROVED_ROTATION
+- FALSE_POSITIVE
+- ACCEPTED_RISK
+- RESOLVED
+
+Review 결정은 `reports/review_status.json`에 저장되며,
+변경 이력은 `reports/audit_log.jsonl`에 JSONL 형식으로 기록됩니다.
+
+본 기능은 실제 Secret 폐기나 권한 회수를 수행하지 않으며,
+관리자 검토 상태와 감사 증적만 관리합니다.
 
 ## 3. 시스템 구조
 

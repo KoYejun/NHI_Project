@@ -27,6 +27,7 @@ def run(
         "risk_results": [],
         "policy_evidence": [],
         "explanations": [],
+        "review_results": [],
         "report_path": "",
         "errors": [],
     }
@@ -40,6 +41,7 @@ def run(
     typer.echo(f"Risk Results: {len(final_state['risk_results'])}")
     typer.echo(f"Policy Evidence: {len(final_state['policy_evidence'])}")
     typer.echo(f"Explanations: {len(final_state['explanations'])}")
+    typer.echo(f"Review Results: {len(final_state['review_results'])}")
     typer.echo(f"Report Path: {final_state['report_path']}")
     typer.echo(f"Errors: {len(final_state['errors'])}")
 

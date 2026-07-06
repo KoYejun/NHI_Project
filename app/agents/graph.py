@@ -5,6 +5,7 @@ from app.agents.nodes.discovery_node import discovery_node
 from app.agents.nodes.explanation_node import explanation_node
 from app.agents.nodes.policy_node import policy_node
 from app.agents.nodes.report_node import report_node
+from app.agents.nodes.review_node import review_node
 from app.agents.nodes.risk_node import risk_node
 from app.agents.state import AgentState
 
@@ -21,6 +22,7 @@ def build_graph():
     graph.add_node("risk_scoring", risk_node)
     graph.add_node("policy_evidence", policy_node)
     graph.add_node("explanation", explanation_node)
+    graph.add_node("human_review", review_node)
     graph.add_node("report", report_node)
 
     graph.add_edge(START, "discovery")
@@ -28,7 +30,8 @@ def build_graph():
     graph.add_edge("context_analysis", "risk_scoring")
     graph.add_edge("risk_scoring", "policy_evidence")
     graph.add_edge("policy_evidence", "explanation")
-    graph.add_edge("explanation", "report")
+    graph.add_edge("explanation", "human_review")
+    graph.add_edge("human_review", "report")
     graph.add_edge("report", END)
 
     return graph.compile()

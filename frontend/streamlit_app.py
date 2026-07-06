@@ -1,9 +1,26 @@
 import json
+import sys
+from importlib import import_module
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 import streamlit as st
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+
+review_manager = import_module("app.review.review_manager")
+
+get_effective_review_status = review_manager.get_effective_review_status
+load_review_status = review_manager.load_review_status
+read_audit_logs = review_manager.read_audit_logs
+save_review_decision = review_manager.save_review_decision
+
 
 REPORT_PATH = Path("reports/result.json")
 
@@ -16,7 +33,7 @@ def main() -> None:
     )
 
     st.title("NHI Secret Agent Dashboard")
-    st.caption("Secret 탐지 결과, 위험도, 정책 근거, Human Review 대상을 확인하는 관리자용 대시보드")
+    st.caption("Secret 탐지 결과, 위험도, 정책 근거, Human Review, 감사 로그를 확인하는 관리자용 대시보드")
 
     if not REPORT_PATH.exists():
         st.warning("reports/result.json 파일이 없습니다.")
@@ -24,6 +41,8 @@ def main() -> None:
         return
 
     result = load_result(REPORT_PATH)
+    saved_review_status = load_review_status()
+
     summary = result.get("summary", {})
     findings = result.get("findings", [])
 
@@ -31,17 +50,25 @@ def main() -> None:
         st.info("탐지 결과가 없습니다.")
         return
 
-    findings_df = build_findings_dataframe(findings)
+    findings_df = build_findings_dataframe(findings, saved_review_status)
 
-    render_summary(summary)
+    render_summary(summary, findings_df)
     render_charts(findings_df)
 
-    tab_overview, tab_detail, tab_review, tab_policy, tab_raw = st.tabs(
+    (
+        tab_overview,
+        tab_detail,
+        tab_review,
+        tab_policy,
+        tab_audit,
+        tab_raw,
+    ) = st.tabs(
         [
             "Finding Overview",
             "Finding Detail",
-            "Human Review",
+            "Review Workflow",
             "Policy Evidence",
+            "Audit Log",
             "Raw JSON",
         ]
     )
@@ -50,13 +77,16 @@ def main() -> None:
         render_finding_overview(findings_df)
 
     with tab_detail:
-        render_finding_detail(findings)
+        render_finding_detail(findings, saved_review_status)
 
     with tab_review:
-        render_human_review(findings_df, findings)
+        render_review_workflow(findings, findings_df, saved_review_status)
 
     with tab_policy:
         render_policy_evidence(findings)
+
+    with tab_audit:
+        render_audit_log()
 
     with tab_raw:
         render_raw_json(result)
@@ -66,11 +96,15 @@ def load_result(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def build_findings_dataframe(findings: list[dict[str, Any]]) -> pd.DataFrame:
+def build_findings_dataframe(
+    findings: list[dict[str, Any]],
+    saved_review_status: dict[str, dict[str, Any]],
+) -> pd.DataFrame:
     rows = []
 
     for finding in findings:
         context = finding.get("context", {})
+        effective_review = get_effective_review_status(finding, saved_review_status)
 
         rows.append(
             {
@@ -81,6 +115,9 @@ def build_findings_dataframe(findings: list[dict[str, Any]]) -> pd.DataFrame:
                 "risk_score": finding.get("risk_score"),
                 "risk_level": finding.get("risk_level"),
                 "requires_human_review": finding.get("requires_human_review"),
+                "review_status": effective_review.get("current_status"),
+                "reviewer": effective_review.get("reviewer"),
+                "reviewed_at": effective_review.get("reviewed_at"),
                 "file_type": context.get("file_type"),
                 "environment_hint": context.get("environment_hint"),
                 "file_criticality": context.get("file_criticality"),
@@ -90,22 +127,28 @@ def build_findings_dataframe(findings: list[dict[str, Any]]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def render_summary(summary: dict[str, Any]) -> None:
+def render_summary(summary: dict[str, Any], findings_df: pd.DataFrame) -> None:
     st.subheader("Summary")
 
-    col1, col2, col3, col4, col5 = st.columns(5)
+    pending_count = int((findings_df["review_status"] == "WAITING_HUMAN_REVIEW").sum())
+    reviewed_count = int(
+        findings_df["review_status"].isin(["APPROVED_ROTATION", "FALSE_POSITIVE", "ACCEPTED_RISK", "RESOLVED"]).sum()
+    )
 
-    col1.metric("Total Findings", summary.get("total", 0))
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
+
+    col1.metric("Total", summary.get("total", 0))
     col2.metric("Critical", summary.get("Critical", 0))
     col3.metric("High", summary.get("High", 0))
-    col4.metric("Medium", summary.get("Medium", 0))
-    col5.metric("Human Review", summary.get("human_review_required", 0))
+    col4.metric("Human Review", summary.get("human_review_required", 0))
+    col5.metric("Pending Review", pending_count)
+    col6.metric("Reviewed", reviewed_count)
 
 
 def render_charts(findings_df: pd.DataFrame) -> None:
-    st.subheader("Risk Distribution")
+    st.subheader("Risk & Review Distribution")
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
 
     with col1:
         risk_order = ["Critical", "High", "Medium", "Low"]
@@ -118,17 +161,32 @@ def render_charts(findings_df: pd.DataFrame) -> None:
         st.write("Secret 유형별 탐지 건수")
         st.bar_chart(type_counts)
 
+    with col3:
+        review_counts = findings_df["review_status"].value_counts()
+        st.write("Review 상태별 건수")
+        st.bar_chart(review_counts)
+
 
 def render_finding_overview(findings_df: pd.DataFrame) -> None:
     st.subheader("Finding Overview")
 
-    risk_levels = ["All"] + sorted(findings_df["risk_level"].dropna().unique().tolist())
-    selected_level = st.selectbox("위험 등급 필터", risk_levels)
+    col1, col2 = st.columns(2)
+
+    with col1:
+        risk_levels = ["All"] + sorted(findings_df["risk_level"].dropna().unique().tolist())
+        selected_level = st.selectbox("위험 등급 필터", risk_levels)
+
+    with col2:
+        review_statuses = ["All"] + sorted(findings_df["review_status"].dropna().unique().tolist())
+        selected_review_status = st.selectbox("Review 상태 필터", review_statuses)
 
     filtered_df = findings_df
 
     if selected_level != "All":
-        filtered_df = findings_df[findings_df["risk_level"] == selected_level]
+        filtered_df = filtered_df[filtered_df["risk_level"] == selected_level]
+
+    if selected_review_status != "All":
+        filtered_df = filtered_df[filtered_df["review_status"] == selected_review_status]
 
     st.dataframe(
         filtered_df,
@@ -137,7 +195,10 @@ def render_finding_overview(findings_df: pd.DataFrame) -> None:
     )
 
 
-def render_finding_detail(findings: list[dict[str, Any]]) -> None:
+def render_finding_detail(
+    findings: list[dict[str, Any]],
+    saved_review_status: dict[str, dict[str, Any]],
+) -> None:
     st.subheader("Finding Detail")
 
     finding_map = {finding["finding_id"]: finding for finding in findings}
@@ -153,6 +214,7 @@ def render_finding_detail(findings: list[dict[str, Any]]) -> None:
     context = finding.get("context", {})
     score_detail = finding.get("score_detail", {})
     explanation = finding.get("agent_explanation", {})
+    effective_review = get_effective_review_status(finding, saved_review_status)
 
     col1, col2 = st.columns([1, 1])
 
@@ -165,15 +227,22 @@ def render_finding_detail(findings: list[dict[str, Any]]) -> None:
         st.write(f"**Masked Secret:** `{finding.get('masked_secret')}`")
         st.write(f"**Risk Level:** {finding.get('risk_level')}")
         st.write(f"**Risk Score:** {finding.get('risk_score')}")
-        st.write(f"**Human Review:** {finding.get('requires_human_review')}")
+        st.write(f"**Human Review Required:** {finding.get('requires_human_review')}")
 
     with col2:
-        st.markdown("### 점수 산정 근거")
-        st.write(f"**TypeRisk:** {score_detail.get('type_risk')}")
-        st.write(f"**ExposureRisk:** {score_detail.get('exposure_risk')}")
-        st.write(f"**ContextBonus:** {score_detail.get('context_bonus')}")
-        st.write(f"**FileCriticalityBonus:** {score_detail.get('file_criticality_bonus')}")
-        st.write(f"**FrequencyBonus:** {score_detail.get('frequency_bonus')}")
+        st.markdown("### Review 상태")
+        st.write(f"**Current Status:** `{effective_review.get('current_status')}`")
+        st.write(f"**Required Reviewer:** `{effective_review.get('required_reviewer')}`")
+        st.write(f"**Reviewer:** `{effective_review.get('reviewer')}`")
+        st.write(f"**Reviewed At:** `{effective_review.get('reviewed_at')}`")
+        st.write(f"**Source:** `{effective_review.get('source')}`")
+
+    st.markdown("### 점수 산정 근거")
+    st.write(f"**TypeRisk:** {score_detail.get('type_risk')}")
+    st.write(f"**ExposureRisk:** {score_detail.get('exposure_risk')}")
+    st.write(f"**ContextBonus:** {score_detail.get('context_bonus')}")
+    st.write(f"**FileCriticalityBonus:** {score_detail.get('file_criticality_bonus')}")
+    st.write(f"**FrequencyBonus:** {score_detail.get('frequency_bonus')}")
 
     st.markdown("### 문맥 분석")
     st.write(f"**파일 유형:** {context.get('file_type')}")
@@ -192,8 +261,12 @@ def render_finding_detail(findings: list[dict[str, Any]]) -> None:
     st.write(f"**사람 검토:** {explanation.get('human_review')}")
 
 
-def render_human_review(findings_df: pd.DataFrame, findings: list[dict[str, Any]]) -> None:
-    st.subheader("Human Review Queue")
+def render_review_workflow(
+    findings: list[dict[str, Any]],
+    findings_df: pd.DataFrame,
+    saved_review_status: dict[str, dict[str, Any]],
+) -> None:
+    st.subheader("Review Workflow")
 
     review_df = findings_df[findings_df["requires_human_review"]]
 
@@ -201,23 +274,55 @@ def render_human_review(findings_df: pd.DataFrame, findings: list[dict[str, Any]
         st.success("현재 Human Review 대상 항목이 없습니다.")
         return
 
+    st.markdown("### Review Queue")
     st.dataframe(
         review_df,
         use_container_width=True,
         hide_index=True,
     )
 
-    st.markdown("### Review Reasons")
-
     finding_map = {finding["finding_id"]: finding for finding in findings}
+    review_finding_ids = review_df["finding_id"].tolist()
 
-    for finding_id in review_df["finding_id"].tolist():
-        finding = finding_map[finding_id]
-        explanation = finding.get("agent_explanation", {})
+    selected_id = st.selectbox(
+        "검토할 Finding 선택",
+        review_finding_ids,
+        format_func=lambda value: format_finding_label(finding_map[value]),
+    )
 
-        with st.expander(format_finding_label(finding)):
-            st.write(explanation.get("human_review"))
-            st.write(explanation.get("recommendation"))
+    finding = finding_map[selected_id]
+    effective_review = get_effective_review_status(finding, saved_review_status)
+    explanation = finding.get("agent_explanation", {})
+
+    st.markdown("### Review Detail")
+    st.write(f"**현재 상태:** `{effective_review.get('current_status')}`")
+    st.write(f"**권고:** {explanation.get('recommendation')}")
+    st.write(f"**검토 사유:** {effective_review.get('review_reason')}")
+
+    status_options = [
+        "WAITING_HUMAN_REVIEW",
+        "APPROVED_ROTATION",
+        "FALSE_POSITIVE",
+        "ACCEPTED_RISK",
+        "RESOLVED",
+    ]
+
+    with st.form("review_decision_form"):
+        selected_status = st.selectbox("Review 결정", status_options)
+        reviewer = st.text_input("Reviewer", value="security_admin")
+        note = st.text_area("Review Note", placeholder="검토 의견을 입력하세요.")
+
+        submitted = st.form_submit_button("Save Review Decision")
+
+    if submitted:
+        save_review_decision(
+            finding_id=selected_id,
+            status=selected_status,
+            reviewer=reviewer,
+            note=note,
+        )
+        st.success("Review decision saved. Audit log updated.")
+        st.rerun()
 
 
 def render_policy_evidence(findings: list[dict[str, Any]]) -> None:
@@ -237,6 +342,24 @@ def render_policy_evidence(findings: list[dict[str, Any]]) -> None:
                 st.write(f"- Policy ID: `{policy.get('policy_id')}`")
                 st.write(f"- Relevance Score: `{policy.get('relevance_score')}`")
                 st.write(f"- Summary: {policy.get('summary')}")
+
+
+def render_audit_log() -> None:
+    st.subheader("Audit Log")
+
+    logs = read_audit_logs()
+
+    if not logs:
+        st.info("아직 저장된 감사 로그가 없습니다.")
+        return
+
+    audit_df = pd.DataFrame(logs)
+
+    st.dataframe(
+        audit_df,
+        use_container_width=True,
+        hide_index=True,
+    )
 
 
 def render_raw_json(result: dict[str, Any]) -> None:

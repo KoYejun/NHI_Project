@@ -57,14 +57,29 @@ def build_summary(state: AgentState) -> dict:
         "Medium": 0,
         "Low": 0,
         "human_review_required": 0,
+        "waiting_human_review": 0,
+        "review_not_required": 0,
     }
+
+    review_map = {item["finding_id"]: item for item in state["review_results"]}
 
     for risk in state["risk_results"]:
         risk_level = risk["risk_level"]
+        finding_id = risk["finding_id"]
+
         summary[risk_level] = summary.get(risk_level, 0) + 1
 
         if risk["requires_human_review"]:
             summary["human_review_required"] += 1
+
+        review_result = review_map.get(finding_id, {})
+        approval_status = review_result.get("approval_status")
+
+        if approval_status == "WAITING_HUMAN_REVIEW":
+            summary["waiting_human_review"] += 1
+
+        if approval_status == "REVIEW_NOT_REQUIRED":
+            summary["review_not_required"] += 1
 
     return summary
 
@@ -73,6 +88,7 @@ def build_detailed_findings(state: AgentState) -> list[dict]:
     context_map = {item["finding_id"]: item for item in state["context_results"]}
     explanation_map = {item["finding_id"]: item for item in state["explanations"]}
     policy_map = {item["finding_id"]: item for item in state["policy_evidence"]}
+    review_map = {item["finding_id"]: item for item in state["review_results"]}
 
     detailed_findings = []
 
@@ -91,8 +107,12 @@ def build_detailed_findings(state: AgentState) -> list[dict]:
                 "score_detail": risk["score_detail"],
                 "requires_human_review": risk["requires_human_review"],
                 "context": context_map.get(finding_id, {}),
-                "policy_evidence": policy_map.get(finding_id, {"matched_policies": []}),
+                "policy_evidence": policy_map.get(
+                    finding_id,
+                    {"matched_policies": []},
+                ),
                 "agent_explanation": explanation_map.get(finding_id, {}),
+                "review_status": review_map.get(finding_id, {}),
             }
         )
 
@@ -116,6 +136,7 @@ def build_markdown_report(result: dict) -> str:
     lines.append(f"- Medium: `{summary['Medium']}`건")
     lines.append(f"- Low: `{summary['Low']}`건")
     lines.append(f"- 관리자 검토 필요 항목: `{summary['human_review_required']}`건")
+    lines.append(f"- 대기 중인 Human Review 항목: `{summary['waiting_human_review']}`건")
     lines.append("")
 
     lines.append("## 2. 상세 탐지 결과")
@@ -126,6 +147,7 @@ def build_markdown_report(result: dict) -> str:
         context = finding["context"]
         score_detail = finding["score_detail"]
         policy_evidence = finding["policy_evidence"]
+        review_status = finding["review_status"]
 
         lines.append(f"### Finding {index}. {finding['risk_level']} / {finding['secret_type']}")
         lines.append("")
@@ -177,19 +199,29 @@ def build_markdown_report(result: dict) -> str:
         lines.append(f"- 사람 검토: {explanation.get('human_review')}")
         lines.append("")
 
+        lines.append("#### Human Review 상태")
+        lines.append("")
+        lines.append(f"- 승인 상태: `{review_status.get('approval_status')}`")
+        lines.append(f"- 결정 상태: `{review_status.get('decision')}`")
+        lines.append(f"- 필요 검토자: `{review_status.get('required_reviewer')}`")
+        lines.append(f"- 검토 사유: {review_status.get('review_reason')}")
+        lines.append(f"- 허용 가능한 후속 조치: `{', '.join(review_status.get('allowed_actions', []))}`")
+        lines.append("")
+
     lines.append("## 3. 보안 설계 원칙")
     lines.append("")
     lines.append("- 본 리포트에는 Secret 원문을 저장하지 않는다.")
     lines.append("- 탐지 결과는 마스킹된 Secret만 포함한다.")
     lines.append("- Critical 또는 High 등급은 자동 조치하지 않고 관리자 검토 대상으로 분류한다.")
     lines.append("- 실제 Secret 유효성 검증, 실제 폐기, 실제 권한 회수는 수행하지 않는다.")
+    lines.append("- Human Review 결정은 감사 로그로 기록한다.")
     lines.append("")
 
     lines.append("## 4. 현재 한계 및 다음 단계")
     lines.append("")
-    lines.append("- 현재 정책 근거 검색은 keyword 기반 RAG-lite 방식이다.")
-    lines.append("- 향후 벡터DB, 내부 정책 문서, 실제 승인 워크플로와 연동할 수 있다.")
-    lines.append("- Streamlit 대시보드를 통해 관리자 검토 화면을 확장할 수 있다.")
+    lines.append("- 현재 Human Review는 로컬 JSON 상태 파일과 JSONL 감사 로그로 관리한다.")
+    lines.append("- 실제 승인 시스템, IAM 권한 회수, Secret Manager API와는 연동하지 않는다.")
+    lines.append("- 향후 조직 내 승인 워크플로, 티켓 시스템, 알림 시스템과 연동할 수 있다.")
     lines.append("")
 
     return "\n".join(lines)
