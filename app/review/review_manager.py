@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-
 REVIEW_STATUS_PATH = Path("reports/review_status.json")
 AUDIT_LOG_PATH = Path("reports/audit_log.jsonl")
 
