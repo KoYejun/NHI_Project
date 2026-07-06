@@ -16,7 +16,7 @@ NHI, 즉 Non-Human Identity는 CI/CD, 서비스 계정, 자동화 봇, 클라우
 
 ## 2. 현재 구현 단계
 
-7단계: Human Review 상태관리 및 Audit Log 추가
+8단계: 공개 저장소 배포 전 품질 게이트 추가
 
 현재 구현된 기능은 다음과 같습니다.
 
@@ -34,6 +34,9 @@ NHI, 즉 Non-Human Identity는 CI/CD, 서비스 계정, 자동화 봇, 클라우
 - Review 결정 상태 저장
 - Audit Log JSONL 기록
 - pytest 기반 보안성 검증
+- Ruff 기반 코드 품질 검증
+- Quality Gate 스크립트 제공
+- GitHub Actions CI 제공
 - 공개 저장소용 샘플 프로젝트 생성 스크립트 제공
 
 ## Human Review 기능
