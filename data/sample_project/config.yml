@@ -1,7 +1,0 @@
-﻿app:
-  name: sample-service
-  environment: dev
-
-oauth:
-  client_id: sample-client-id
-  client_secret: sample_client_secret_abcdefghijklmnopqrstuvwxyz

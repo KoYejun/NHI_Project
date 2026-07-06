@@ -6,7 +6,11 @@ __pycache__/
 
 reports/*.json
 reports/*.md
+!reports/.gitkeep
 
 .env
 .env.*
 !.env.example
+
+data/sample_project/*
+!data/sample_project/.gitkeep
