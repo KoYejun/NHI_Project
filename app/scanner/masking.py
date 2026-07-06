@@ -3,8 +3,8 @@ def mask_secret(secret_value: str, visible_prefix: int = 4, visible_suffix: int 
     Secret 원문을 리포트에 저장하지 않기 위해 마스킹한다.
 
     예:
-    AKIA1234567890ABCDEF -> AKIA************CDEF
-    ghp_abcdefghijklmnopqrstuvwxyz1234567890 -> ghp_************************7890
+    <AWS_ACCESS_KEY_SAMPLE> -> AKIA************CDEF
+    <GITHUB_TOKEN_SAMPLE> -> ghp_************************7890
     """
 
     if not secret_value:

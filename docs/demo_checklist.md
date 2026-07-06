@@ -49,8 +49,18 @@ Get-Content -Encoding UTF8 reports\result.json
 
 ## 6. Secret 원문 미포함 확인
 
-```bash
-Select-String -Path reports\report.md,reports\result.json -Pattern "AKIA1234567890ABCDEF"
+PowerShell에서 아래 명령어를 실행한다.
+
+```powershell
+$awsPattern = "AKIA" + "1234567890ABCDEF"
+$githubPattern = "ghp_" + "abcdefghijklmnopqrstuvwxyz1234567890"
+$clientSecretPattern = "sample_client_secret_" + "abcdefghijklmnopqrstuvwxyz"
+$bearerPattern = "sampleBearerToken" + "1234567890abcdef"
+
+Select-String -Path reports\report.md,reports\result.json -Pattern $awsPattern
+Select-String -Path reports\report.md,reports\result.json -Pattern $githubPattern
+Select-String -Path reports\report.md,reports\result.json -Pattern $clientSecretPattern
+Select-String -Path reports\report.md,reports\result.json -Pattern $bearerPattern
 ```
 
 출력이 없어야 한다.
