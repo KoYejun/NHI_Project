@@ -16,7 +16,9 @@ NHI, 즉 Non-Human Identity는 CI/CD, 서비스 계정, 자동화 봇, 클라우
 
 ## 2. 현재 구현 단계
 
-5단계: 포트폴리오/공개 저장소용 정리
+## 2. 현재 구현 단계
+
+6단계: Policy Evidence + Streamlit Dashboard 추가
 
 현재 구현된 기능은 다음과 같습니다.
 
@@ -24,10 +26,12 @@ NHI, 즉 Non-Human Identity는 CI/CD, 서비스 계정, 자동화 봇, 클라우
 - Secret 원문 미저장 및 마스킹 처리
 - 파일 경로와 유형 기반 문맥 분석
 - TypeRisk, ExposureRisk, ContextBonus, FileCriticalityBonus 기반 위험도 계산
+- keyword 기반 RAG-lite 정책 근거 검색
 - LangGraph 기반 Node Workflow 구성
 - 규칙 기반 Explanation Agent
 - JSON 결과 생성
 - Markdown 리포트 생성
+- Streamlit 관리자 대시보드 제공
 - pytest 기반 보안성 검증
 - 공개 저장소용 샘플 프로젝트 생성 스크립트 제공
 
@@ -128,6 +132,21 @@ python -m app.main --target-path data/sample_project
 ```text
 reports/result.json
 reports/report.md
+```
+
+## 대시보드 실행 방법
+
+먼저 샘플 프로젝트를 생성하고 Agent를 실행합니다.
+
+```bash
+python scripts/create_sample_project.py
+python -m app.main --target-path data/sample_project
+```
+
+그다음 Streamlit 대시보드를 실행합니다.
+
+```bash
+streamlit run frontend/streamlit_app.py
 ```
 
 ## 8. 테스트 방법

@@ -7,8 +7,7 @@ def explanation_node(state: AgentState) -> AgentState:
 
     역할:
     - 위험도 분석 결과를 관리자용 설명으로 변환한다.
-    - LLM API 없이 규칙 기반 템플릿으로 생성한다.
-    - 설명에는 탐지 요약, 위험 판단, NHI 연결 가능성, 영향, 대응 권고, 사람 검토를 포함한다.
+    - 정책 근거를 함께 반영한다.
     """
 
     try:
@@ -17,10 +16,12 @@ def explanation_node(state: AgentState) -> AgentState:
         explanations = []
 
         context_map = {item["finding_id"]: item for item in state["context_results"]}
+        policy_map = {item["finding_id"]: item for item in state["policy_evidence"]}
 
         for risk in state["risk_results"]:
             finding_id = risk["finding_id"]
             context = context_map.get(finding_id, {})
+            policy_evidence = policy_map.get(finding_id, {"matched_policies": []})
 
             explanation = {
                 "finding_id": finding_id,
@@ -28,6 +29,7 @@ def explanation_node(state: AgentState) -> AgentState:
                 "risk_reason": build_risk_reason(risk, context),
                 "nhi_possibility": build_nhi_possibility(risk),
                 "possible_impact": build_possible_impact(risk),
+                "policy_basis": build_policy_basis(policy_evidence),
                 "recommendation": build_recommendation(risk),
                 "human_review": build_human_review_message(risk),
             }
@@ -119,6 +121,17 @@ def build_possible_impact(risk: dict) -> str:
         return "Bearer Token이 유효하다면 API 요청 위조, 사용자 또는 서비스 권한 남용 가능성이 있습니다."
 
     return "Secret의 권한 범위에 따라 내부 시스템, 데이터, API 접근 위험이 발생할 수 있습니다."
+
+
+def build_policy_basis(policy_evidence: dict) -> str:
+    matched_policies = policy_evidence.get("matched_policies", [])
+
+    if not matched_policies:
+        return "연결된 정책 근거를 찾지 못했습니다. 보안 담당자 검토가 필요합니다."
+
+    policy_titles = [policy["title"] for policy in matched_policies[:3]]
+
+    return "관련 정책 근거: " + ", ".join(policy_titles)
 
 
 def build_recommendation(risk: dict) -> str:

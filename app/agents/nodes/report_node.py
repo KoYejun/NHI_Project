@@ -10,8 +10,6 @@ def report_node(state: AgentState) -> AgentState:
 
     역할:
     - 최종 분석 결과를 JSON과 Markdown으로 저장한다.
-    - result.json은 기계 처리용 결과다.
-    - report.md는 발표와 관리자 검토용 리포트다.
     """
 
     try:
@@ -31,7 +29,6 @@ def report_node(state: AgentState) -> AgentState:
         )
 
         markdown_report = build_markdown_report(final_result)
-
         markdown_path.write_text(markdown_report, encoding="utf-8")
 
         state["report_path"] = markdown_path.as_posix()
@@ -74,8 +71,8 @@ def build_summary(state: AgentState) -> dict:
 
 def build_detailed_findings(state: AgentState) -> list[dict]:
     context_map = {item["finding_id"]: item for item in state["context_results"]}
-
     explanation_map = {item["finding_id"]: item for item in state["explanations"]}
+    policy_map = {item["finding_id"]: item for item in state["policy_evidence"]}
 
     detailed_findings = []
 
@@ -94,6 +91,7 @@ def build_detailed_findings(state: AgentState) -> list[dict]:
                 "score_detail": risk["score_detail"],
                 "requires_human_review": risk["requires_human_review"],
                 "context": context_map.get(finding_id, {}),
+                "policy_evidence": policy_map.get(finding_id, {"matched_policies": []}),
                 "agent_explanation": explanation_map.get(finding_id, {}),
             }
         )
@@ -127,6 +125,7 @@ def build_markdown_report(result: dict) -> str:
         explanation = finding["agent_explanation"]
         context = finding["context"]
         score_detail = finding["score_detail"]
+        policy_evidence = finding["policy_evidence"]
 
         lines.append(f"### Finding {index}. {finding['risk_level']} / {finding['secret_type']}")
         lines.append("")
@@ -138,6 +137,7 @@ def build_markdown_report(result: dict) -> str:
         lines.append(f"- 위험 등급: `{finding['risk_level']}`")
         lines.append(f"- 관리자 검토 필요: `{finding['requires_human_review']}`")
         lines.append("")
+
         lines.append("#### 점수 산정 근거")
         lines.append("")
         lines.append(f"- TypeRisk: `{score_detail['type_risk']}`")
@@ -146,6 +146,7 @@ def build_markdown_report(result: dict) -> str:
         lines.append(f"- FileCriticalityBonus: `{score_detail['file_criticality_bonus']}`")
         lines.append(f"- FrequencyBonus: `{score_detail['frequency_bonus']}`")
         lines.append("")
+
         lines.append("#### 문맥 분석")
         lines.append("")
         lines.append(f"- 파일 유형: `{context.get('file_type')}`")
@@ -154,12 +155,24 @@ def build_markdown_report(result: dict) -> str:
         lines.append(f"- 문맥 키워드: `{', '.join(context.get('context_keywords', []))}`")
         lines.append(f"- 문맥 요약: {context.get('context_summary')}")
         lines.append("")
+
+        lines.append("#### 정책 근거")
+        lines.append("")
+        matched_policies = policy_evidence.get("matched_policies", [])
+
+        for policy in matched_policies:
+            lines.append(f"- `{policy['policy_id']}` {policy['title']}")
+            lines.append(f"  - 관련도 점수: `{policy['relevance_score']}`")
+            lines.append(f"  - 요약: {policy['summary']}")
+
+        lines.append("")
         lines.append("#### Agent 분석")
         lines.append("")
         lines.append(f"- 탐지 요약: {explanation.get('summary')}")
         lines.append(f"- 위험 판단: {explanation.get('risk_reason')}")
         lines.append(f"- NHI 연결 가능성: {explanation.get('nhi_possibility')}")
         lines.append(f"- 가능한 영향: {explanation.get('possible_impact')}")
+        lines.append(f"- 정책 근거 요약: {explanation.get('policy_basis')}")
         lines.append(f"- 대응 권고: {explanation.get('recommendation')}")
         lines.append(f"- 사람 검토: {explanation.get('human_review')}")
         lines.append("")
@@ -174,9 +187,9 @@ def build_markdown_report(result: dict) -> str:
 
     lines.append("## 4. 현재 한계 및 다음 단계")
     lines.append("")
-    lines.append("- 현재 Discovery Node는 실제 Scanner가 아니라 mock 탐지 결과를 사용한다.")
-    lines.append("- 다음 단계에서 1번 담당자의 Secret Scanner 결과와 연동한다.")
-    lines.append("- 이후 정책 문서 RAG, Streamlit 대시보드, Blast Radius 분석을 확장할 수 있다.")
+    lines.append("- 현재 정책 근거 검색은 keyword 기반 RAG-lite 방식이다.")
+    lines.append("- 향후 벡터DB, 내부 정책 문서, 실제 승인 워크플로와 연동할 수 있다.")
+    lines.append("- Streamlit 대시보드를 통해 관리자 검토 화면을 확장할 수 있다.")
     lines.append("")
 
     return "\n".join(lines)

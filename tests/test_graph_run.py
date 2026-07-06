@@ -11,6 +11,7 @@ def build_initial_state() -> dict:
         "raw_findings": [],
         "context_results": [],
         "risk_results": [],
+        "policy_evidence": [],
         "explanations": [],
         "report_path": "",
         "errors": [],
@@ -28,6 +29,7 @@ def test_graph_run_creates_json_and_markdown_reports(tmp_path, monkeypatch):
     assert len(final_state["raw_findings"]) == 4
     assert len(final_state["context_results"]) == 4
     assert len(final_state["risk_results"]) == 4
+    assert len(final_state["policy_evidence"]) == 4
     assert len(final_state["explanations"]) == 4
     assert final_state["report_path"] == "reports/report.md"
 
@@ -69,3 +71,18 @@ def test_result_json_contains_expected_summary(tmp_path, monkeypatch):
     assert summary["Medium"] == 2
     assert summary["Low"] == 0
     assert summary["human_review_required"] == 2
+
+
+def test_result_json_contains_policy_evidence(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    create_sample_project(tmp_path, "data/sample_project")
+
+    graph = build_graph()
+    graph.invoke(build_initial_state())
+
+    result = json.loads(Path("reports/result.json").read_text(encoding="utf-8"))
+
+    for finding in result["findings"]:
+        assert "policy_evidence" in finding
+        assert "matched_policies" in finding["policy_evidence"]
+        assert len(finding["policy_evidence"]["matched_policies"]) >= 1
