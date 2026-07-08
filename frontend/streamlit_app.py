@@ -699,9 +699,7 @@ def render_scanner_section(findings_df: pd.DataFrame) -> None:
                 "대신 앞뒤 일부 문자만 남기고 가운데를 별표로 가려 2차 노출 위험을 줄입니다.",
             ),
         ],
-        closing=(
-            "즉, 이 단계는 ‘프로젝트 안에 어떤 비밀값 후보가 숨어 있는지’를 안전하게 찾아내는 과정입니다."
-        ),
+        closing=("즉, 이 단계는 ‘프로젝트 안에 어떤 비밀값 후보가 숨어 있는지’를 안전하게 찾아내는 과정입니다."),
     )
 
     close_story_section()
@@ -854,9 +852,7 @@ def render_context_section(findings_df: pd.DataFrame) -> None:
                 "이 정보는 위험도 계산의 가산점으로 반영됩니다.",
             ),
         ],
-        closing=(
-            "문맥 분석은 단순 탐지 결과를 실제 보안 판단에 가까운 결과로 바꾸는 단계입니다."
-        ),
+        closing=("문맥 분석은 단순 탐지 결과를 실제 보안 판단에 가까운 결과로 바꾸는 단계입니다."),
     )
 
     close_story_section()
@@ -911,9 +907,7 @@ def render_policy_section(policy_df: pd.DataFrame) -> None:
                 "위험도가 높은 Secret 후보는 폐기, 재발급, 접근 로그 점검, 사용 범위 확인 같은 대응 절차와 연결되어야 합니다.",
             ),
         ],
-        closing=(
-            "이 정책 근거는 이후 Agent 설명과 대응 권고를 생성할 때 판단 기준으로 사용됩니다."
-        ),
+        closing=("이 정책 근거는 이후 Agent 설명과 대응 권고를 생성할 때 판단 기준으로 사용됩니다."),
     )
 
     close_story_section()
@@ -961,7 +955,6 @@ def render_detail_section(
     finding = finding_map[selected_id]
     context = finding.get("context", {})
     score_detail = finding.get("score_detail", {})
-    explanation = finding.get("agent_explanation", {})
     effective_review = get_effective_review_status(finding, saved_review_status)
 
     detail_rows = [
@@ -1017,9 +1010,7 @@ def render_detail_section(
                 "보안 담당자가 보고서처럼 읽고 판단할 수 있도록 구성한 부분입니다.",
             ),
         ],
-        closing=(
-            "이 섹션은 ‘탐지된 값 하나가 실제로 어떤 의미를 갖는지’를 가장 자세히 보여주는 분석 화면입니다."
-        ),
+        closing=("이 섹션은 ‘탐지된 값 하나가 실제로 어떤 의미를 갖는지’를 가장 자세히 보여주는 분석 화면입니다."),
     )
 
     close_story_section()
@@ -1196,9 +1187,7 @@ def render_audit_section(audit_df: pd.DataFrame) -> None:
                 "현재는 로컬 감사 로그 파일에 저장하지만, 실제 환경에서는 SIEM, 티켓 시스템, 승인 워크플로우와 연결할 수 있습니다.",
             ),
         ],
-        closing=(
-            "감사 로그는 이 시스템이 단순 탐지 도구가 아니라, 보안 운영 흐름까지 고려한 구조임을 보여줍니다."
-        ),
+        closing=("감사 로그는 이 시스템이 단순 탐지 도구가 아니라, 보안 운영 흐름까지 고려한 구조임을 보여줍니다."),
     )
 
     close_story_section()
@@ -1301,6 +1290,7 @@ def render_section_guide(title: str, paragraphs: list[str]) -> None:
         """,
         unsafe_allow_html=True,
     )
+
 
 def render_explanation_toggle(
     title: str,
