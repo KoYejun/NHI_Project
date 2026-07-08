@@ -102,15 +102,15 @@ def build_detailed_findings(state: AgentState) -> list[dict]:
                 "masked_secret": risk["masked_secret"],
                 "file_path": risk["file_path"],
                 "line_number": risk["line_number"],
+                "line_content": risk.get("line_content", ""),
+                "detector": risk.get("detector", "unknown"),
+                "occurrence_count": risk.get("occurrence_count", 1),
                 "risk_score": risk["risk_score"],
                 "risk_level": risk["risk_level"],
                 "score_detail": risk["score_detail"],
                 "requires_human_review": risk["requires_human_review"],
                 "context": context_map.get(finding_id, {}),
-                "policy_evidence": policy_map.get(
-                    finding_id,
-                    {"matched_policies": []},
-                ),
+                "policy_evidence": policy_map.get(finding_id, {"matched_policies": []}),
                 "agent_explanation": explanation_map.get(finding_id, {}),
                 "review_status": review_map.get(finding_id, {}),
             }
@@ -154,10 +154,20 @@ def build_markdown_report(result: dict) -> str:
         lines.append(f"- Finding ID: `{finding['finding_id']}`")
         lines.append(f"- 파일 경로: `{finding['file_path']}`")
         lines.append(f"- 라인 번호: `{finding['line_number']}`")
+        lines.append(f"- 탐지 방식: `{finding.get('detector', 'unknown')}`")
+        lines.append(f"- 반복 노출 횟수: `{finding.get('occurrence_count', 1)}`")
         lines.append(f"- 마스킹 Secret: `{finding['masked_secret']}`")
         lines.append(f"- 위험 점수: `{finding['risk_score']}`")
         lines.append(f"- 위험 등급: `{finding['risk_level']}`")
         lines.append(f"- 관리자 검토 필요: `{finding['requires_human_review']}`")
+        if finding.get("line_content"):
+            lines.append("")
+            lines.append("#### 탐지 라인")
+            lines.append("")
+            lines.append("```text")
+            lines.append(finding["line_content"])
+            lines.append("```")
+            lines.append("")
         lines.append("")
 
         lines.append("#### 점수 산정 근거")
