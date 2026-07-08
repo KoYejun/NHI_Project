@@ -595,26 +595,33 @@ def render_executive_section(summary: dict[str, Any], findings_df: pd.DataFrame)
         filename="executive_summary.csv",
     )
 
-    with st.expander("설명", expanded=False):
-        st.markdown(
-            """
-            이 영역은 **어떤 값이 Secret 후보로 탐지됐는지**를 보여줍니다.
-
-            Secret은 코드 파일에만 있는 것이 아니라 설정 파일, 로그, 문서에도 남을 수 있습니다.  
-            그래서 이 시스템은 분석 대상 폴더 안의 여러 파일을 자동으로 확인합니다.
-
-            탐지는 두 가지 방식으로 진행됩니다.
-
-            1. **정규식 기반 탐지**  
-               AWS Key, GitHub Token처럼 형식이 정해져 있는 값을 찾습니다.
-
-            2. **엔트로피 기반 탐지**  
-               이름은 명확하지 않지만 랜덤성이 높아 비밀값처럼 보이는 문자열을 찾습니다.
-
-            탐지 결과에는 실제 Secret 원문을 저장하지 않습니다.  
-            대시보드와 리포트에는 마스킹된 값만 표시되므로 결과 화면을 공유해도 민감 값이 그대로 노출되지 않습니다.
-            """
-        )
+    render_explanation_toggle(
+        title="전체 분석 결과를 읽는 방법",
+        intro=(
+            "이 섹션은 분석 대상 폴더에서 발견된 Secret 후보를 한눈에 요약합니다. "
+            "가장 먼저 전체 탐지 건수와 우선 검토가 필요한 항목 수를 확인하면 됩니다."
+        ),
+        points=[
+            (
+                "Total Findings",
+                "분석 대상 폴더에서 Secret처럼 보이는 값이 몇 개 발견되었는지를 의미합니다. "
+                "코드, 설정 파일, 로그, 문서에 포함된 후보 값이 모두 집계됩니다.",
+            ),
+            (
+                "Critical / High",
+                "우선적으로 사람이 확인해야 하는 항목입니다. 단순히 문자열 패턴만 보고 정한 것이 아니라, "
+                "파일 위치, 운영 환경 문맥, 반복 노출 여부를 함께 반영한 결과입니다.",
+            ),
+            (
+                "Review Status",
+                "각 Finding이 아직 검토 대기 중인지, 오탐으로 판단되었는지, 조치가 승인되었는지 등을 보여줍니다.",
+            ),
+        ],
+        closing=(
+            "분석 요약입니다. 여기에서 위험도가 높은 항목을 확인한 뒤, 아래 섹션에서 "
+            "왜 탐지되었고 왜 위험한지 단계별로 내려가며 확인하면 됩니다."
+        ),
+    )
 
     close_story_section()
 
@@ -669,26 +676,33 @@ def render_scanner_section(findings_df: pd.DataFrame) -> None:
         filename="scanner_results.csv",
     )
 
-    with st.expander("설명", expanded=False):
-        st.markdown(
-            """
-            이 화면은 무엇을 탐지했는지를 보여주는 단계입니다.
-
-            보안 사고에서 Secret은 보통 코드, 설정 파일, 로그, 문서에 흩어져 있습니다.  
-            사람이 직접 모든 파일을 확인하기 어렵기 때문에 Scanner Engine이 먼저 후보를 찾아냅니다.
-
-            이 프로젝트의 탐지는 두 가지 방식으로 구성됩니다.
-
-            1. 정규식 기반 탐지  
-               AWS Key, GitHub Token, Slack Token, Bearer Token처럼 형식이 비교적 명확한 Secret을 찾습니다.
-
-            2. 엔트로피 기반 탐지    
-               이름이 명확하지 않아도 문자와 숫자가 섞여 있고 랜덤성이 높은 문자열을 Secret 후보로 판단합니다.
-
-            탐지 결과에는 원문이 아니라 마스킹된 값만 저장됩니다.  
-            그래서 분석 리포트나 대시보드가 다시 유출되더라도 실제 Secret이 그대로 노출되지 않습니다.
-            """
-        )
+    render_explanation_toggle(
+        title="Secret 후보를 탐지하는 방식",
+        intro=(
+            "이 섹션은 프로젝트 파일 안에서 어떤 값이 Secret 후보로 탐지되었는지 보여줍니다. "
+            "분석 대상은 개별 문자열이 아니라 폴더 전체입니다."
+        ),
+        points=[
+            (
+                "정규식 기반 탐지",
+                "AWS Access Key, GitHub Token, Slack Token, Bearer Token처럼 형식이 비교적 명확한 값을 찾습니다. "
+                "예를 들어 특정 접두어나 길이, 문자 조합을 기준으로 Secret 후보를 식별합니다.",
+            ),
+            (
+                "엔트로피 기반 탐지",
+                "이름이 명확하지 않아도 문자와 숫자가 섞여 있고 랜덤성이 높은 문자열을 Secret 후보로 판단합니다. "
+                "정규식만으로 잡기 어려운 비밀값을 보완적으로 찾기 위한 방식입니다.",
+            ),
+            (
+                "마스킹 처리",
+                "탐지된 Secret 원문은 결과 파일이나 대시보드에 그대로 저장하지 않습니다. "
+                "대신 앞뒤 일부 문자만 남기고 가운데를 별표로 가려 2차 노출 위험을 줄입니다.",
+            ),
+        ],
+        closing=(
+            "즉, 이 단계는 ‘프로젝트 안에 어떤 비밀값 후보가 숨어 있는지’를 안전하게 찾아내는 과정입니다."
+        ),
+    )
 
     close_story_section()
 
@@ -743,25 +757,33 @@ def render_risk_section(findings: list[dict[str, Any]], risk_df: pd.DataFrame) -
         filename="risk_analysis.csv",
     )
 
-    with st.expander("설명", expanded=False):
-        st.markdown(
-            """
-            이 영역은 탐지된 항목이 **얼마나 위험한지**를 보여줍니다.
-
-            Secret 후보가 발견되었다고 해서 모두 같은 수준으로 위험한 것은 아닙니다.  
-            예를 들어 문서에 적힌 예시 키와 운영 환경의 설정 파일에 있는 실제 키는 대응 우선순위가 달라야 합니다.
-
-            그래서 이 시스템은 다음 요소를 함께 봅니다.
-
-            - **Secret 유형**: AWS Key인지, GitHub Token인지, 일반 API Key인지
-            - **발견 위치**: .env, config, code, log, 문서 중 어디에서 발견됐는지
-            - **주변 문맥**: production, admin, database 같은 단서가 있는지
-            - **반복 노출**: 같은 값이 여러 파일에 반복해서 등장하는지
-
-            이 요소들을 점수화해 Critical, High, Medium, Low 등급으로 나눕니다.  
-            Critical과 High 항목은 사람이 먼저 확인해야 하는 검토 대상으로 분류됩니다.
-            """
-        )
+    render_explanation_toggle(
+        title="위험 점수가 계산되는 방식",
+        intro=(
+            "이 섹션은 탐지된 Secret 후보의 위험도를 계산하고 우선순위를 정합니다. "
+            "모든 Secret 후보가 같은 위험도를 갖는 것은 아니기 때문에, 여러 요소를 함께 반영합니다."
+        ),
+        points=[
+            (
+                "Secret 유형",
+                "AWS Key, GitHub Token, Slack Token, 일반 API Key처럼 Secret 유형에 따라 기본 위험도를 다르게 봅니다. "
+                "권한 범위가 크거나 외부 시스템 접근에 사용될 가능성이 높은 값일수록 더 높은 점수를 받습니다.",
+            ),
+            (
+                "발견 위치",
+                ".env나 config 파일에서 발견된 값은 문서 예시보다 더 위험하게 평가됩니다. "
+                "특히 운영 환경 설정 파일에 포함된 Secret은 실제 서비스와 연결될 가능성이 높습니다.",
+            ),
+            (
+                "문맥과 반복 노출",
+                "production, admin, database 같은 키워드가 주변에 있거나 같은 Secret이 여러 파일에 반복 등장하면 위험도가 올라갑니다. "
+                "이는 실제 공격자가 악용할 가능성이 더 높다고 보기 때문입니다.",
+            ),
+        ],
+        closing=(
+            "계산 결과는 Critical, High, Medium, Low 등급으로 정리되며, Critical과 High는 관리자 검토 대상으로 분류됩니다."
+        ),
+    )
 
     close_story_section()
 
@@ -811,17 +833,31 @@ def render_context_section(findings_df: pd.DataFrame) -> None:
         filename="context_analysis.csv",
     )
 
-    with st.expander("설명", expanded=False):
-        st.markdown(
-            """
-            <div class="explain-note">
-            Context Analysis는 .env, config, log, code, doc 같은 파일 유형을 구분하고,
-            production, admin, root, database, secret, token 같은 단서를 찾아 위험 점수에 반영합니다.
-            이 구조 덕분에 README의 예시 키와 운영 환경 설정 파일의 Secret 후보를 다르게 평가할 수 있습니다.
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    render_explanation_toggle(
+        title="문맥을 함께 보는 이유",
+        intro=(
+            "Secret 탐지에서 중요한 것은 값을 찾는 것뿐만 아니라, 그 값이 어떤 상황에서 발견되었는지 이해하는 것입니다."
+        ),
+        points=[
+            (
+                "파일 유형",
+                ".env, config, code, log, doc처럼 파일 유형을 구분합니다. "
+                "같은 Secret 후보라도 설정 파일에서 발견된 경우와 문서 예시에서 발견된 경우는 위험도가 다릅니다.",
+            ),
+            (
+                "환경 단서",
+                "production, dev, test 같은 단서를 확인해 해당 Secret이 운영 환경과 연결될 가능성이 있는지 판단합니다.",
+            ),
+            (
+                "주변 키워드",
+                "admin, root, database, token, secret 같은 키워드가 주변에 있으면 위험한 문맥으로 판단합니다. "
+                "이 정보는 위험도 계산의 가산점으로 반영됩니다.",
+            ),
+        ],
+        closing=(
+            "문맥 분석은 단순 탐지 결과를 실제 보안 판단에 가까운 결과로 바꾸는 단계입니다."
+        ),
+    )
 
     close_story_section()
 
@@ -854,17 +890,31 @@ def render_policy_section(policy_df: pd.DataFrame) -> None:
         filename="policy_evidence.csv",
     )
 
-    with st.expander("설명", expanded=False):
-        st.markdown(
-            """
-            <div class="explain-note">
-            Policy Evidence는 로컬 정책 문서를 기반으로 각 Finding과 관련 있는 정책 근거를 연결합니다.
-            대시보드에서는 어떤 정책이 어떤 Secret 후보와 연결되었는지 확인할 수 있고,
-            이 결과는 Agent 설명의 policy_basis와 대응 권고에 반영됩니다.
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    render_explanation_toggle(
+        title="정책 근거를 연결하는 이유",
+        intro=(
+            "이 섹션은 탐지된 항목이 어떤 보안 정책과 관련되는지 보여줍니다. "
+            "단순히 위험하다고 표시하는 것보다, 왜 조치가 필요한지 근거를 함께 제시하는 것이 중요합니다."
+        ),
+        points=[
+            (
+                "Secret 관리 기준",
+                "코드나 설정 파일에 Secret을 직접 저장하지 않아야 하며, 필요한 경우 Secret Manager 같은 안전한 저장소로 이전해야 합니다.",
+            ),
+            (
+                "NHI 접근 관리",
+                "Secret은 자동화 계정, 서비스 계정, API 연동 계정과 연결될 수 있습니다. "
+                "따라서 Secret 노출은 비인간 아이덴티티 권한 노출로 이어질 수 있습니다.",
+            ),
+            (
+                "사고 대응 기준",
+                "위험도가 높은 Secret 후보는 폐기, 재발급, 접근 로그 점검, 사용 범위 확인 같은 대응 절차와 연결되어야 합니다.",
+            ),
+        ],
+        closing=(
+            "이 정책 근거는 이후 Agent 설명과 대응 권고를 생성할 때 판단 기준으로 사용됩니다."
+        ),
+    )
 
     close_story_section()
 
@@ -944,15 +994,33 @@ def render_detail_section(
     st.markdown("#### 탐지 라인")
     st.code(finding.get("line_content", ""), language="text")
 
-    with st.expander("설명", expanded=False):
-        st.markdown("#### Agent 분석")
-        st.write(f"**탐지 요약:** {explanation.get('summary')}")
-        st.write(f"**위험 판단:** {explanation.get('risk_reason')}")
-        st.write(f"**NHI 연결 가능성:** {explanation.get('nhi_possibility')}")
-        st.write(f"**가능한 영향:** {explanation.get('possible_impact')}")
-        st.write(f"**정책 근거 요약:** {explanation.get('policy_basis')}")
-        st.write(f"**대응 권고:** {explanation.get('recommendation')}")
-        st.write(f"**사람 검토:** {explanation.get('human_review')}")
+    render_explanation_toggle(
+        title="개별 Finding을 해석하는 방법",
+        intro=(
+            "이 섹션은 하나의 탐지 항목을 선택해 상세 근거를 확인하는 영역입니다. "
+            "전체 요약에서 위험한 항목을 발견했다면, 여기서 왜 위험한지 자세히 볼 수 있습니다."
+        ),
+        points=[
+            (
+                "탐지 정보",
+                "파일 경로, 라인 번호, 탐지 방식, 마스킹된 Secret 값을 보여줍니다. "
+                "탐지 라인은 원문이 아니라 마스킹된 형태로만 표시됩니다.",
+            ),
+            (
+                "점수 근거",
+                "TypeRisk, ExposureRisk, ContextBonus, FileCriticalityBonus, FrequencyBonus를 확인할 수 있습니다. "
+                "이를 통해 최종 위험 점수가 어떤 요소 때문에 높아졌는지 알 수 있습니다.",
+            ),
+            (
+                "Agent 설명",
+                "탐지 요약, 위험 판단, NHI 연결 가능성, 예상 영향, 대응 권고를 자연어로 제공합니다. "
+                "보안 담당자가 보고서처럼 읽고 판단할 수 있도록 구성한 부분입니다.",
+            ),
+        ],
+        closing=(
+            "이 섹션은 ‘탐지된 값 하나가 실제로 어떤 의미를 갖는지’를 가장 자세히 보여주는 분석 화면입니다."
+        ),
+    )
 
     close_story_section()
 
@@ -1046,24 +1114,32 @@ def render_review_section(
             st.success("Review decision saved. Audit log updated.")
             st.rerun()
 
-    with st.expander("설명", expanded=False):
-        st.markdown(
-            """
-            이 영역은 **위험도가 높은 항목을 사람이 최종 확인하는 단계**입니다.
-
-            자동화 시스템이 Secret 후보를 찾았다고 해서 바로 삭제하거나 권한을 회수하면 위험할 수 있습니다.  
-            실제 Secret이 아닐 수도 있고, 이미 폐기된 값일 수도 있으며, 서비스 운영에 영향을 줄 수도 있습니다.
-
-            그래서 이 시스템은 다음 방식으로 동작합니다.
-
-            - Critical / High 항목을 우선 검토 대상으로 표시
-            - 관리자가 검토 상태와 의견을 저장
-            - 저장된 결정은 감사 로그에 기록
-            - 실제 Secret 폐기나 권한 회수는 자동 수행하지 않음
-
-            즉, 자동화는 빠르게 위험 후보를 찾아주고, 최종 판단은 사람이 책임 있게 내리도록 설계했습니다.
-            """
-        )
+    render_explanation_toggle(
+        title="사람이 최종 판단하는 이유",
+        intro=(
+            "이 섹션은 위험도가 높은 항목을 사람이 검토하도록 분리한 영역입니다. "
+            "보안 자동화는 빠르게 후보를 찾을 수 있지만, 실제 조치까지 자동으로 수행하면 문제가 생길 수 있습니다."
+        ),
+        points=[
+            (
+                "오탐 가능성",
+                "탐지된 값이 실제 Secret이 아닐 수도 있습니다. 예시 값이거나 이미 폐기된 값일 가능성도 있기 때문에 사람이 확인해야 합니다.",
+            ),
+            (
+                "서비스 영향도",
+                "실제 운영에 사용 중인 Secret을 바로 폐기하면 서비스 장애가 발생할 수 있습니다. "
+                "따라서 담당자 확인과 승인 절차가 필요합니다.",
+            ),
+            (
+                "검토 상태 기록",
+                "관리자는 회전 승인, 오탐 처리, 위험 수용, 해결 완료 같은 상태를 저장할 수 있습니다. "
+                "이 결정은 감사 로그에 남아 이후 추적할 수 있습니다.",
+            ),
+        ],
+        closing=(
+            "즉, 이 구조는 자동화의 속도와 사람의 책임 있는 판단을 함께 사용하기 위한 Human-in-the-loop 설계입니다."
+        ),
+    )
 
     close_story_section()
 
@@ -1098,16 +1174,32 @@ def render_audit_section(audit_df: pd.DataFrame) -> None:
             filename="audit_log.csv",
         )
 
-    with st.expander("설명", expanded=False):
-        st.markdown(
-            """
-            <div class="explain-note">
-            Audit Log는 보안 조치의 추적 가능성을 보여주는 영역입니다.
-            실제 운영 환경에서는 이 로그를 보안 감사, 사후 검토, 승인 이력 관리에 활용할 수 있습니다.
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    render_explanation_toggle(
+        title="검토 이력을 남기는 이유",
+        intro=(
+            "이 섹션은 관리자 검토 과정에서 저장된 결정을 기록합니다. "
+            "보안 운영에서는 탐지 자체뿐 아니라 이후 어떤 판단을 했는지도 중요합니다."
+        ),
+        points=[
+            (
+                "추적 가능성",
+                "누가, 언제, 어떤 Finding에 대해 어떤 결정을 했는지 확인할 수 있습니다. "
+                "이는 이후 감사나 사고 분석에서 중요한 근거가 됩니다.",
+            ),
+            (
+                "책임 있는 의사결정",
+                "위험을 수용했는지, 오탐으로 판단했는지, Secret 회전을 승인했는지 기록으로 남깁니다. "
+                "이를 통해 보안 조치가 임의로 처리되지 않도록 합니다.",
+            ),
+            (
+                "운영 확장성",
+                "현재는 로컬 감사 로그 파일에 저장하지만, 실제 환경에서는 SIEM, 티켓 시스템, 승인 워크플로우와 연결할 수 있습니다.",
+            ),
+        ],
+        closing=(
+            "감사 로그는 이 시스템이 단순 탐지 도구가 아니라, 보안 운영 흐름까지 고려한 구조임을 보여줍니다."
+        ),
+    )
 
     close_story_section()
 
@@ -1134,17 +1226,30 @@ def render_raw_json_section(result: dict[str, Any]) -> None:
 
     st.json(result)
 
-    with st.expander("설명", expanded=False):
-        st.markdown(
-            """
-            <div class="explain-note">
-            Raw JSON은 디버깅과 검증용입니다.
-            Scanner Results, Risk Analysis, Policy Evidence, Human Review 화면은
-            이 JSON의 필드를 읽어 자동으로 생성됩니다.
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    render_explanation_toggle(
+        title="결과 데이터가 사용되는 방식",
+        intro=(
+            "이 섹션은 대시보드가 읽고 있는 최종 분석 결과를 보여줍니다. "
+            "화면의 수치와 표는 하드코딩된 값이 아니라 이 JSON 데이터를 기반으로 만들어집니다."
+        ),
+        points=[
+            (
+                "데이터 기반 화면",
+                "탐지 건수, 위험 등급, 정책 근거, 검토 상태는 result.json의 summary와 findings를 기준으로 자동 계산됩니다.",
+            ),
+            (
+                "입력 변경 대응",
+                "분석 대상 폴더가 바뀌면 Secret 탐지 결과와 위험 점수도 바뀌고, 대시보드 화면도 그에 맞게 갱신됩니다.",
+            ),
+            (
+                "통합 산출물",
+                "이 JSON은 Secret 탐지, 문맥 분석, 위험도 계산, 정책 근거, Agent 설명, 관리자 검토 결과를 모두 포함한 최종 산출물입니다.",
+            ),
+        ],
+        closing=(
+            "따라서 이 대시보드는 특정 샘플에만 맞춘 정적인 화면이 아니라, 입력 데이터에 따라 바뀌는 분석 화면입니다."
+        ),
+    )
 
     close_story_section()
 
@@ -1196,6 +1301,24 @@ def render_section_guide(title: str, paragraphs: list[str]) -> None:
         """,
         unsafe_allow_html=True,
     )
+
+def render_explanation_toggle(
+    title: str,
+    intro: str,
+    points: list[tuple[str, str]],
+    closing: str | None = None,
+) -> None:
+    with st.expander("설명", expanded=False):
+        st.markdown(f"### {title}")
+        st.markdown(intro)
+
+        for point_title, point_body in points:
+            st.markdown(f"**{point_title}**")
+            st.markdown(point_body)
+
+        if closing:
+            st.markdown("---")
+            st.markdown(closing)
 
 
 def render_table_with_csv(df: pd.DataFrame, filename: str) -> None:
