@@ -10,6 +10,9 @@ def context_node(state: AgentState) -> AgentState:
     - 실제 파일 본문 분석은 1번 담당자와 연동 후 확장한다.
     - 2단계에서는 파일 경로와 Secret 유형을 기준으로 규칙 기반 문맥 분석을 수행한다.
     """
+    if state.get("context_results"):
+        print("[Context Analysis Node] 개발1 Context 결과 재사용")
+        return state
 
     try:
         print("[Context Analysis Node] 실행")

@@ -13,6 +13,9 @@ def risk_node(state: AgentState) -> AgentState:
                  + FileCriticalityBonus
                  + FrequencyBonus
     """
+    if state.get("risk_results"):
+        print("[Risk Scoring Node] 개발1 Risk 결과 재사용")
+        return state
 
     try:
         print("[Risk Scoring Node] 실행")

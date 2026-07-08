@@ -1,32 +1,31 @@
 from app.agents.state import AgentState
-from app.scanner.secret_scanner import scan_directory
+from app.dev1_scanner.run_scan import run_full_scan
 
 
 def discovery_node(state: AgentState) -> AgentState:
     """
     Discovery Node.
 
-    역할:
-    - target_path 하위 파일을 스캔한다.
-    - Secret 후보를 탐지한다.
-    - 탐지 결과를 raw_findings에 저장한다.
-
-    보안 원칙:
-    - Secret 원문은 State에 저장하지 않는다.
-    - masked_secret만 다음 Node로 전달한다.
+    개발1 호환 Scanner Engine을 실행해
+    raw_findings, context_results, risk_results를 한 번에 생성한다.
     """
 
     try:
-        print("[Discovery Node] 실행")
+        print("[Discovery Node] 개발1 호환 Scanner Engine 실행")
 
         target_path = state["target_path"]
-        raw_findings = scan_directory(target_path)
 
-        state["raw_findings"] = raw_findings
+        scan_result = run_full_scan(target_path)
+
+        state["raw_findings"] = scan_result["raw_findings"]
+        state["context_results"] = scan_result["context_results"]
+        state["risk_results"] = scan_result["risk_results"]
 
         return state
 
     except Exception as exc:
         state["errors"].append(f"Discovery Node Error: {str(exc)}")
         state["raw_findings"] = []
+        state["context_results"] = []
+        state["risk_results"] = []
         return state
