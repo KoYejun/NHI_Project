@@ -34,3 +34,12 @@ class GitHubBranchMetadata(TypedDict, total=False):
     name: str
     commit_sha: str
     protected: bool
+
+
+class GitHubCloneResult(TypedDict, total=False):
+    provider: str
+    repository: str
+    branch: str
+    commit_sha: str
+    clone_path: str
+    clone_url: str

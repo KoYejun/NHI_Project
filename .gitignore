@@ -15,3 +15,15 @@ reports/*.jsonl
 
 data/sample_project/*
 !data/sample_project/.gitkeep
+
+# Local scan output
+data/results/*.json
+data/temp/
+!data/results/.gitkeep
+
+# Local credentials
+.env
+.env.local
+
+# Python virtual environment
+.venv/

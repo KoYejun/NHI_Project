@@ -45,3 +45,15 @@ class ConnectorTimeoutError(ConnectorError):
     """외부 API 요청 시간이 제한 시간을 초과한 경우."""
 
     error_code = "CONNECTOR_TIMEOUT"
+
+
+class RepositoryCloneError(ConnectorError):
+    """Git Repository를 내려받지 못한 경우."""
+
+    error_code = "REPOSITORY_CLONE_FAILED"
+
+
+class GitCommandNotFoundError(ConnectorError):
+    """실행 환경에서 Git 명령어를 찾을 수 없는 경우."""
+
+    error_code = "GIT_COMMAND_NOT_FOUND"

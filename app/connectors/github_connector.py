@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import os
+import shutil
+import subprocess
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -12,12 +15,15 @@ from app.connectors.connector_errors import (
     AuthenticationError,
     ConnectorTimeoutError,
     ExternalApiError,
+    GitCommandNotFoundError,
     PermissionDeniedError,
     RateLimitError,
+    RepositoryCloneError,
     ResourceNotFoundError,
 )
 from app.connectors.schemas import (
     GitHubBranchMetadata,
+    GitHubCloneResult,
     GitHubConnectionResult,
     GitHubRepositoryMetadata,
 )
@@ -217,6 +223,109 @@ class GitHubConnector(BaseConnector):
             "commit_sha": branch.get("commit", {}).get("sha", ""),
             "protected": bool(branch.get("protected", False)),
         }
+
+    def clone_repository(
+        self,
+        repository: str,
+        branch_name: str,
+        destination: str | Path,
+        *,
+        depth: int = 1,
+    ) -> GitHubCloneResult:
+        """
+        공개 GitHub Repository의 특정 Branch를 Clone한다.
+
+        Args:
+            repository:
+                owner/repository 형식의 저장소 이름.
+            branch_name:
+                Clone할 Branch 이름.
+            destination:
+                Repository를 내려받을 로컬 경로.
+            depth:
+                가져올 Git 이력 깊이. 기본값은 1이다.
+
+        Returns:
+            Repository와 Clone 경로, Commit SHA 정보.
+
+        Raises:
+            GitCommandNotFoundError:
+                Git 명령어가 설치되지 않았거나 PATH에서 찾을 수 없는 경우.
+            RepositoryCloneError:
+                Clone 명령이 실패한 경우.
+        """
+        owner, repo = self._parse_repository_name(repository)
+
+        if depth < 1:
+            raise ValueError("Clone depth는 1 이상의 정수여야 합니다.")
+
+        destination_path = Path(destination).resolve()
+
+        self.get_repository(repository)
+        branch_metadata = self.get_branch(repository, branch_name)
+
+        if shutil.which("git") is None:
+            raise GitCommandNotFoundError("Git 명령어를 찾을 수 없습니다. Git 설치 상태를 확인하세요.")
+
+        if destination_path.exists():
+            if any(destination_path.iterdir()):
+                raise RepositoryCloneError("Clone 대상 폴더가 비어 있지 않습니다.")
+        else:
+            destination_path.mkdir(parents=True, exist_ok=True)
+
+        clone_url = f"https://github.com/{owner}/{repo}.git"
+
+        command = [
+            "git",
+            "clone",
+            "--depth",
+            str(depth),
+            "--single-branch",
+            "--branch",
+            branch_name,
+            clone_url,
+            str(destination_path),
+        ]
+
+        try:
+            completed_process = subprocess.run(
+                command,
+                check=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=120,
+                shell=False,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise RepositoryCloneError("Repository Clone 시간이 120초를 초과했습니다.") from exc
+        except OSError as exc:
+            raise RepositoryCloneError("Git Clone 명령을 실행하지 못했습니다.") from exc
+
+        if completed_process.returncode != 0:
+            error_message = self._sanitize_git_error(completed_process.stderr)
+
+            raise RepositoryCloneError(f"Repository Clone에 실패했습니다. Git 메시지: {error_message}")
+
+        return {
+            "provider": self.provider,
+            "repository": repository,
+            "branch": branch_name,
+            "commit_sha": branch_metadata.get("commit_sha", ""),
+            "clone_path": str(destination_path),
+            "clone_url": clone_url,
+        }
+
+    @staticmethod
+    def _sanitize_git_error(error_message: str) -> str:
+        """Git 오류 문자열을 사용자 출력용으로 정리한다."""
+        normalized = error_message.strip()
+
+        if not normalized:
+            return "상세 오류 메시지가 없습니다."
+
+        return normalized[:500]
 
     @staticmethod
     def _parse_repository_name(repository: str) -> tuple[str, str]:

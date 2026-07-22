@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import sys
+import tempfile
+from pathlib import Path
 
 from app.connectors.connector_errors import ConnectorError
 from app.connectors.github_connector import GitHubConnector
@@ -45,6 +47,30 @@ def main() -> int:
             TARGET_BRANCH,
         )
         print_json("4. 대상 Branch 정보", target_branch)
+
+        with tempfile.TemporaryDirectory(
+            prefix="nhi-github-clone-"
+        ) as temporary_directory:
+            clone_path = Path(temporary_directory) / "repository"
+
+            clone_result = connector.clone_repository(
+                repository=REPOSITORY,
+                branch_name=TARGET_BRANCH,
+                destination=clone_path,
+            )
+
+            print_json("5. Repository Clone 결과", clone_result)
+
+            cloned_files = [
+                str(path.relative_to(clone_path))
+                for path in clone_path.rglob("*")
+                if path.is_file()
+            ]
+
+            print_json(
+                "6. Clone된 파일 일부",
+                cloned_files[:20],
+            )
 
     except ConnectorError as exc:
         print()
