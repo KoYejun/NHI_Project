@@ -43,3 +43,22 @@ class GitHubCloneResult(TypedDict, total=False):
     commit_sha: str
     clone_path: str
     clone_url: str
+
+class SlackConnectionResult(TypedDict, total=False):
+    connected: bool
+    provider: str
+    authenticated: bool
+    validation_status: str
+    identity_type: str
+    identity_id: str
+    identity_name: str
+    user_id: str
+    bot_id: str
+    team_id: str
+    team_name: str
+    enterprise_id: str
+    app_id: str
+    raw_scopes: list[str]
+    checked_at: str
+    error_code: str
+    error_message: str
