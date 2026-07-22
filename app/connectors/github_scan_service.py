@@ -10,6 +10,7 @@ from typing import Any
 from uuid import uuid4
 
 from app.connectors.github_connector import GitHubConnector
+from app.dev1_scanner.finding_normalizer import normalize_findings
 from app.dev1_scanner.run_scan import run_detection
 
 
@@ -49,13 +50,14 @@ class GitHubScanService:
                 destination=clone_path,
             )
 
-            findings = run_detection(clone_path)
+            raw_findings = run_detection(clone_path)
 
-            normalized_findings = self._attach_source_metadata(
-                findings=findings,
+            normalized_findings = normalize_findings(
+                raw_findings,
+                repository_root=clone_path,
                 scan_id=scan_id,
                 repository=repository,
-                branch_name=branch_name,
+                branch=branch_name,
                 commit_sha=clone_result.get("commit_sha", ""),
             )
 
